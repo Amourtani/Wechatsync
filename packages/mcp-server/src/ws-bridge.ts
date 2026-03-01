@@ -14,6 +14,7 @@ const WS_OPEN = WebSocket.OPEN
 export interface BridgeOptions {
   silent?: boolean
   host?: string
+  disableHttpApi?: boolean
 }
 
 export class ExtensionBridge {
@@ -38,9 +39,13 @@ export class ExtensionBridge {
   // 监听地址（默认 localhost，可设置为 0.0.0.0 允许远程连接）
   private host: string
 
+  // 是否禁用 HTTP API（SSE 模式下使用）
+  private disableHttpApi: boolean
+
   constructor(private port: number = 9527, options?: BridgeOptions) {
     this.silent = options?.silent ?? false
     this.host = options?.host || '0.0.0.0'
+    this.disableHttpApi = options?.disableHttpApi ?? false
     if (!this.silent) {
       if (this.token) {
         console.error('[Bridge] Token authentication enabled')
@@ -79,10 +84,14 @@ export class ExtensionBridge {
         this.wss.on('listening', () => {
           const hostDisplay = this.host === '0.0.0.0' ? 'all interfaces' : this.host
           if (!this.silent) console.error(`[Bridge] WebSocket server listening on ${hostDisplay}:${this.port}`)
-          // WebSocket 启动成功后，启动 HTTP API
-          this.startHttpApi()
-            .then(resolve)
-            .catch(reject)
+          // WebSocket 启动成功后，启动 HTTP API（除非禁用）
+          if (this.disableHttpApi) {
+            resolve()
+          } else {
+            this.startHttpApi()
+              .then(resolve)
+              .catch(reject)
+          }
         })
 
         this.wss.on('connection', (ws: any) => {

@@ -1,15 +1,11 @@
 {
-  "name": "@wechatsync/mcp-server",
+  "name": "@wechatsync/mcp-relay",
   "version": "1.0.0",
-  "description": "MCP Server for WechatSync - bridges Claude Code with Chrome Extension",
+  "description": "MCP Relay - 本地桥接服务，连接本地浏览器插件与远程 MCP Server",
   "type": "module",
   "main": "dist/index.js",
-  "exports": {
-    ".": "./dist/index.js",
-    "./bridge": "./dist/exports.js"
-  },
   "bin": {
-    "wechatsync-mcp": "./dist/index.js"
+    "mcp-relay": "./dist/index.js"
   },
   "files": [
     "dist"
@@ -17,15 +13,14 @@
   "scripts": {
     "build": "tsup",
     "dev": "tsup --watch",
-    "start": "node dist/index.js",
-    "start:sse": "node dist/index.js --sse"
+    "start": "node dist/index.js"
   },
   "keywords": [
     "wechatsync",
     "mcp",
-    "claude",
-    "websocket",
-    "bridge"
+    "relay",
+    "bridge",
+    "websocket"
   ],
   "repository": {
     "type": "git",
@@ -34,12 +29,9 @@
   "author": "fun",
   "license": "MIT",
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.0.0",
-    "express": "^4.21.0",
     "ws": "^8.18.0"
   },
   "devDependencies": {
-    "@types/express": "^4.17.21",
     "@types/node": "^22.10.2",
     "@types/ws": "^8.5.13",
     "tsup": "^8.5.1",

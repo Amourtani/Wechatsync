@@ -27,7 +27,10 @@ const WS_HOST = process.env.SYNC_WS_HOST || '0.0.0.0'
 const isSSEMode = process.argv.includes('--sse')
 
 // Extension WebSocket 桥接
-const bridge = new ExtensionBridge(WS_PORT, { host: WS_HOST })
+const bridge = new ExtensionBridge(WS_PORT, { 
+  host: WS_HOST, 
+  disableHttpApi: isSSEMode 
+})
 
 /**
  * 创建 MCP Server
@@ -275,29 +278,47 @@ async function startSSEMode() {
   // 启动 WebSocket 服务器（Extension 连接）
   await bridge.start()
 
-  const server = createServer()
   const app = express()
-  let transport: SSEServerTransport | null = null
+  const transports: Map<string, SSEServerTransport> = new Map()
 
   // SSE 端点
   app.get('/sse', async (req: Request, res: Response) => {
     console.error('[MCP] New SSE connection from Claude Code')
-    transport = new SSEServerTransport('/message', res)
+    const transport = new SSEServerTransport('/message', res)
+    const sessionId = transport.sessionId
+    transports.set(sessionId, transport)
 
-    res.on('close', () => {
-      console.error('[MCP] SSE connection closed')
-      transport = null
-    })
+    transport.onclose = () => {
+      console.error(`[MCP] SSE transport closed for session ${sessionId}`)
+      transports.delete(sessionId)
+    }
 
+    const server = createServer()
     await server.connect(transport)
+    console.error(`[MCP] Established SSE stream with session ID: ${sessionId}`)
   })
 
   // 消息端点
   app.post('/message', express.json(), async (req: Request, res: Response) => {
-    if (transport) {
-      await transport.handlePostMessage(req, res)
-    } else {
-      res.status(400).json({ error: 'No active SSE connection' })
+    const sessionId = req.query.sessionId as string
+    if (!sessionId) {
+      res.status(400).send('Missing sessionId parameter')
+      return
+    }
+
+    const transport = transports.get(sessionId)
+    if (!transport) {
+      res.status(404).send('Session not found')
+      return
+    }
+
+    try {
+      await transport.handlePostMessage(req, res, req.body)
+    } catch (error) {
+      console.error('[MCP] Error handling request:', error)
+      if (!res.headersSent) {
+        res.status(500).send('Error handling request')
+      }
     }
   })
 
