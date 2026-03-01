@@ -13,6 +13,7 @@ export default defineConfig([
     banner: {
       js: '#!/usr/bin/env node',
     },
+    external: ['ws', 'express', '@modelcontextprotocol/sdk'],
   },
   // Library exports (no shebang)
   {
@@ -22,5 +23,6 @@ export default defineConfig([
     outDir: 'dist',
     sourcemap: true,
     dts: true,
+    external: ['ws', 'express', '@modelcontextprotocol/sdk'],
   },
 ])

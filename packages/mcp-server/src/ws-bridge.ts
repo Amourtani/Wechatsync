@@ -5,17 +5,16 @@
  * - 第一个实例启动 WebSocket 服务器 + HTTP API
  * - 后续实例通过 HTTP API 转发请求
  */
-// eslint-disable-next-line @typescript-eslint/no-require-imports
-import wsModule from 'ws'
+import { WebSocketServer, WebSocket } from 'ws'
 import http from 'http'
 import type { RequestMessage, ResponseMessage } from './types.js'
 
-// 兼容 CJS 和 ESM 打包
-const WsModule = wsModule as any
-// ESM: WebSocketServer, CJS: Server
-const WebSocketServer = WsModule.WebSocketServer || WsModule.Server || WsModule.default?.WebSocketServer || WsModule.default?.Server
-// WebSocket 状态常量 (readyState: 1 = OPEN)
-const WS_OPEN = 1
+const WS_OPEN = WebSocket.OPEN
+
+export interface BridgeOptions {
+  silent?: boolean
+  host?: string
+}
 
 export class ExtensionBridge {
   private wss: any = null
@@ -36,8 +35,12 @@ export class ExtensionBridge {
   // 是否静默模式（CLI 使用时不输出日志）
   private silent: boolean = false
 
-  constructor(private port: number = 9527, options?: { silent?: boolean }) {
+  // 监听地址（默认 localhost，可设置为 0.0.0.0 允许远程连接）
+  private host: string
+
+  constructor(private port: number = 9527, options?: BridgeOptions) {
     this.silent = options?.silent ?? false
+    this.host = options?.host || '0.0.0.0'
     if (!this.silent) {
       if (this.token) {
         console.error('[Bridge] Token authentication enabled')
@@ -71,10 +74,11 @@ export class ExtensionBridge {
   private startServer(): Promise<void> {
     return new Promise((resolve, reject) => {
       try {
-        this.wss = new WebSocketServer({ port: this.port })
+        this.wss = new WebSocketServer({ port: this.port, host: this.host })
 
         this.wss.on('listening', () => {
-          if (!this.silent) console.error(`[Bridge] WebSocket server listening on port ${this.port}`)
+          const hostDisplay = this.host === '0.0.0.0' ? 'all interfaces' : this.host
+          if (!this.silent) console.error(`[Bridge] WebSocket server listening on ${hostDisplay}:${this.port}`)
           // WebSocket 启动成功后，启动 HTTP API
           this.startHttpApi()
             .then(resolve)
@@ -162,8 +166,9 @@ export class ExtensionBridge {
       })
 
       const httpPort = this.port + 1
-      this.httpServer.listen(httpPort, () => {
-        if (!this.silent) console.error(`[Bridge] HTTP API listening on port ${httpPort}`)
+      this.httpServer.listen(httpPort, this.host, () => {
+        const hostDisplay = this.host === '0.0.0.0' ? 'all interfaces' : this.host
+        if (!this.silent) console.error(`[Bridge] HTTP API listening on ${hostDisplay}:${httpPort}`)
         resolve()
       })
 

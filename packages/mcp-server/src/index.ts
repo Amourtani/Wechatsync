@@ -21,12 +21,13 @@ import type { PlatformInfo, SyncResult } from './types.js'
 
 const WS_PORT = parseInt(process.env.SYNC_WS_PORT || '9527', 10)
 const HTTP_PORT = parseInt(process.env.SYNC_HTTP_PORT || '9528', 10)
+const WS_HOST = process.env.SYNC_WS_HOST || '0.0.0.0'
 
 // 检查是否是 SSE 模式
 const isSSEMode = process.argv.includes('--sse')
 
 // Extension WebSocket 桥接
-const bridge = new ExtensionBridge(WS_PORT)
+const bridge = new ExtensionBridge(WS_PORT, { host: WS_HOST })
 
 /**
  * 创建 MCP Server
@@ -262,8 +263,9 @@ async function startStdioMode() {
   await server.connect(transport)
 
   // 日志输出到 stderr（不影响 stdio 通信）
+  const wsHost = WS_HOST === '0.0.0.0' ? '0.0.0.0' : 'localhost'
   console.error('[MCP] Sync Assistant started (stdio mode)')
-  console.error(`[MCP] Extension WebSocket: ws://localhost:${WS_PORT}`)
+  console.error(`[MCP] Extension WebSocket: ws://${wsHost}:${WS_PORT}`)
 }
 
 /**
@@ -315,11 +317,13 @@ async function startSSEMode() {
     })
   })
 
-  app.listen(HTTP_PORT, () => {
+  const wsHost = WS_HOST === '0.0.0.0' ? '0.0.0.0' : 'localhost'
+  app.listen(HTTP_PORT, WS_HOST, () => {
+    const hostDisplay = WS_HOST === '0.0.0.0' ? 'all interfaces' : WS_HOST
     console.error('[MCP] Sync Assistant started (SSE mode)')
-    console.error(`[MCP] HTTP Server: http://localhost:${HTTP_PORT}`)
-    console.error(`[MCP] Claude Code: http://localhost:${HTTP_PORT}/sse`)
-    console.error(`[MCP] Extension WebSocket: ws://localhost:${WS_PORT}`)
+    console.error(`[MCP] HTTP Server: http://${hostDisplay}:${HTTP_PORT}`)
+    console.error(`[MCP] Claude Code: http://${hostDisplay}:${HTTP_PORT}/sse`)
+    console.error(`[MCP] Extension WebSocket: ws://${wsHost}:${WS_PORT}`)
   })
 }
 
