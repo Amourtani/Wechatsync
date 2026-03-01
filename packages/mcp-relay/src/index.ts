@@ -23,7 +23,7 @@ class McpRelay {
   constructor() {
     if (!REMOTE_URL) {
       console.error('[Relay] Error: RELAY_REMOTE_URL is not set')
-      console.error('[Relay] Usage: RELAY_REMOTE_URL=ws://your-server:9527 pnpm start')
+      console.error('[Relay] Usage: RELAY_REMOTE_URL=ws://your-server:9527 pnpm relay')
       process.exit(1)
     }
   }
